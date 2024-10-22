@@ -2,7 +2,7 @@
 
 This repository is intended to present a simplified reference demonstrating how a management and deployment pipeline might work for applications that depend on services managed by a central IAM platform team. As such, it is a complement to the [infrastructure](https://github.com/pingidentity/pipeline-example-infrastructure) and [platform](https://github.com/pingidentity/pipeline-example-platform) example pipeline repositories.
 
-> NOTE: This repository directly depends on a completed set-up of the [pipeline-example-application](https://github.com/pingidentity/pipeline-example-platform?tab=readme-ov-file#deploy-prod-and-qa). Please ensure you have completed the steps for confguration leading up to and including the previous link.
+> NOTE: This repository directly depends on a completed setup of the [pipeline-example-application](https://github.com/pingidentity/pipeline-example-platform?tab=readme-ov-file#deploy-prod-and-qa). Please ensure you have completed the steps for confguration leading up to and including the previous link.
 
 **Infrastructure** - Components dealing with deploying software onto self-managed Kubernetes infrastructure and any configuration that must be delivered directly via the filesystem.
 
@@ -26,11 +26,26 @@ In this repository, the processes and features shown in a GitOps process of deve
 
 To be successful in recreating the use cases supported by this pipeline, there are initial steps that should be completed prior to configuring this repository:
 
-- Completion of all pre-requisites and confiuration steps leading to [Feature Development](https://github.com/pingidentity/pipeline-example-platform?tab=readme-ov-file#feature-development) in the example-pipeline-platform.
-- [Docker](https://docs.docker.com/engine/install/) - used to deploy a local sample application.
+- Completion of all pre-requisites and configuration steps leading to [Feature Development](https://github.com/pingidentity/pipeline-example-platform?tab=readme-ov-file#feature-development) in the example-pipeline-platform.
+- [Docker](https://docs.docker.com/engine/install/) - used to deploy a local sample application for this repository.
 
 <!-- TODO - Review Required Permissions-->
 > Note - For PingOne, meeting these requirements means you should have credentials for a worker app residing in the "Administrators" environment that has organization-level scoped roles. For DaVinci, you should have credentials for a user in a non-"Administrators" environment that is part of a group specifically intended to be used by command-line tools or APIs with environment-level scoped roles.
+
+If you have not created a static development environment in your PingOne account, you can do so in the *pipeline-example-platform* local repository by running the following command to instantiate one matching `prod` and `qa`:
+
+```bash
+git checkout prod
+git pull origin prod
+git checkout -b dev
+git push origin dev
+```
+
+![PingOne Environments](./img/pingOneEnvs.png "PingOne Environments")
+
+Capture the corresponding Environment ID for the `dev` environment.  You will provide this value at the command line when running the deployment script later.
+
+> Note - In some cases, the platform team may choose to provide each developer with a unique environment.  For the purposes of this document, the **dev** environment can be considered as a shared environment used by all developers.
 
 ### Repository Setup
 
@@ -56,24 +71,11 @@ The Github pipeline actions will depend on sourcing some secrets as ephemeral en
 cp secretstemplate localsecrets
 ```
 
-> Note, `secretstemplate` is intended to be a template file, `localsecrets` is a file that contains credentials but is part of .gitignore and should never be committed into the repository. **`secretstemplate`** is committed to the repository, do not edit it directly!
+> Note, `secretstemplate` is intended to be a template file, `localsecrets` is a file that contains credentials but is part of .gitignore and should never be committed into the repository. **`secretstemplate`** is committed to the repository - do not edit it directly!
 
-Fill in `localsecrets` accordingly. The configurations in this repository rely on environments created from [pipeline-example-platform](https://github.com/pingidentity/pipeline-example-platform). For the `PINGONE_TARGET_ENVIRONMENT_ID_PROD` and `PINGONE_TARGET_ENVIRONMENT_ID_QA` variables, get the Environment ID for the `prod` and `qa` environments. The Environment ID can be found from the output at the end of a terraform apply (whether from the Github Actions pipeline, or local) or from the PingOne console directly.
+Fill in `localsecrets` accordingly, referring to the comments for guidance. Much of the information needed can be found in the corresponding localsecrets file in the platform repository, as the configurations in this repository rely on environments created from [pipeline-example-platform](https://github.com/pingidentity/pipeline-example-platform). For the `PINGONE_TARGET_ENVIRONMENT_ID_PROD` and `PINGONE_TARGET_ENVIRONMENT_ID_QA` variables, use the environment ID for the `prod` and `qa` environments. The environment ID can be found from the output at the end of a terraform apply for the platform repository (whether from the Github Actions pipeline, or a local script run) or directly from the PingOne console.
 
-If you have not created a static development environment in your PingOne account, you can do so in the *pipeline-example-platform* local repository by running the following command to instantiate one matching prod and qa:
-
-```bash
-git checkout prod
-git pull origin prod
-git checkout -b dev
-git push origin dev
-```
-
-Enter the corresponding Environment ID into localsecrets in your application repository for `PINGONE_TARGET_ENVIRONMENT_ID_DEV`. This action will leave you with three persistent environments `prod`, `qa` and `dev`, each with a corresponding environment variable definition pair in the `localsecrets` file.
-
-![PingOne Environments](./img/pingOneEnvs.png "PingOne Environments")
-
-Run the following command to upload **localsecrets** to Github:
+After completing the file, run the following command to upload **localsecrets** to Github:
 
 ```bash
 _secrets="$(base64 -i localsecrets)"
@@ -108,7 +110,7 @@ Next, test the deployed environments:
 
 1. The example customer application requires a local file that is generated by the terraform apply and holds environment variables needed for the client application to connect with the deployed configuration. The file contents are printed at the end of a terraform apply, so they can be pulled from workflow logs. Find the workflow pipeline that corresponds to the latest successful `prod` deployment, 
 
-```
+```bash
 git fetch origin
 git checkout prod
 ./scripts/local_feature_deploy.sh
